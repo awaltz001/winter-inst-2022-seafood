@@ -1,3 +1,8 @@
+## Title:
+## Authors: Clarissa Gallo, Nicole Perez, Amber Waltz
+## Research questions:
+  ##
+
 ## read in data
 
 farmed <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-12/aquaculture-farmed-fish-production.csv')
@@ -14,3 +19,6 @@ worldbank <- readr::read_csv('https://raw.githubusercontent.com/awaltz001/winter
 
 library(tidyverse)
 
+## join the data
+
+df <- merge(farmed,captured,by="Entity")
