@@ -1,7 +1,6 @@
-## Title:
+## Title: Seafood Sustainability and GDP Per Capita
 ## Authors: Clarissa Gallo, Nicole Perez, Amber Waltz
-## Research questions:
-  ##
+## Research question: Does GDP per capita impact a country's level of aquaculture over time?
 
 ## read in data
 
@@ -14,11 +13,22 @@ fishery <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/ti
 production <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-12/seafood-and-fish-production-thousand-tonnes.csv')
 worldbank <- readr::read_csv('https://raw.githubusercontent.com/awaltz001/winter-inst-2022-seafood/main/data/World%20Bank%20Indicators_GDP%20Per%20Capita.csv')
 
-
 ## load packages
 
 library(tidyverse)
 
 ## join the data
 
-df <- merge(farmed,captured,by="Entity")
+wb <- worldbank %>%
+  pivot_longer(
+    cols = starts_with("19") | starts_with("20"),
+    names_to = "Year",
+    values_to = "gdp_per_capita",
+    values_drop_na = TRUE
+  )
+
+wb$year_only <- as.numeric(substr(wb$Year, 1,4))
+
+df <- merge(x = wb, y = captured_vs_farmed, by.x = c("Country Code","year_only"), by.y = c("Code","Year"), all.x = TRUE)
+
+
