@@ -29,6 +29,23 @@ wb <- worldbank %>%
 
 wb$year_only <- as.numeric(substr(wb$Year, 1,4))
 
-df <- merge(x = wb, y = captured_vs_farmed, by.x = c("Country Code","year_only"), by.y = c("Code","Year"), all.x = TRUE)
+df <- merge(x = wb,
+            y = captured_vs_farmed,
+            by.x = c("Country Code","year_only"),
+            by.y = c("Code","Year"),
+            all.x = TRUE)
 
+## explore data
 
+df$aquaprod <- df$`Aquaculture production (metric tons)` 
+
+df$shareaquaprod <- df$aquaprod /
+  (df$`Capture fisheries production (metric tons)` + df$aquaprod)
+
+ggplot(data=df, aes(x=year_only, y=aquaprod, group=1)) +
+  geom_point()
+
+share_of_aqua_line <- ggplot(data=df, aes(x=year_only, y=shareaquaprod, group=1)) +
+  geom_smooth()
+
+df$gdp_nulls_removed <- as.numeric(na_if(df$gdp_per_capita, ".."))
