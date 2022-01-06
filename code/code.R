@@ -42,10 +42,17 @@ df$aquaprod <- df$`Aquaculture production (metric tons)`
 df$shareaquaprod <- df$aquaprod /
   (df$`Capture fisheries production (metric tons)` + df$aquaprod)
 
+##note to self: edit these graphs to filter!
+
 ggplot(data=df, aes(x=year_only, y=aquaprod, group=1)) +
   geom_point()
 
 share_of_aqua_line <- ggplot(data=df, aes(x=year_only, y=shareaquaprod, group=1)) +
   geom_smooth()
 
+ggplot(data=df, aes(x=year_only, y=gdp_nulls_removed, group=1)) +
+  geom_smooth()
+
 df$gdp_nulls_removed <- as.numeric(na_if(df$gdp_per_capita, ".."))
+
+
