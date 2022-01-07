@@ -19,6 +19,7 @@ worldbank_co2 <- readr::read_csv('https://raw.githubusercontent.com/awaltz001/wi
 
 install.packages("tidymodels")
 library(tidyverse)
+library(stargazer)
 
 ## join the data
 
@@ -65,40 +66,46 @@ df <- merge(x = df,
             by.y = c("Code","Year"),
             all.x = TRUE)
 
-machinedata <- df[ -c(1, 3:6, 8:11, 13, 16, 18:20, 22:23) ]
+df_cleaned <- df[ -c(1, 4:6, 8:11, 13, 16, 18:20, 22:23) ]
 
-machinedata$co2_emissions_per_capita <- as.numeric(machinedata$co2_emissions_per_capita)
+df_cleaned$co2_emissions_per_capita <- as.numeric(machinedata$co2_emissions_per_capita)
 
 ## clean data
 
-machinedata$aquaprod <- df$`Aquaculture production (metric tons)` 
-machinedata$captureprod <- machinedata$`Capture fisheries production (metric tons)`
-machinedata$consumption <- machinedata$`Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)`
-machinedata$totalprod <- machinedata$aquaprod + machinedata$captureprod
-machinedata$proportion_aquaprod <- machinedata$aquaprod / machinedata$totalprod
-machinedata$largescale <- machinedata$`Industrial (large-scale commercial)`
-machinedata$proportion_largescale <- machinedata$largescale / machinedata$totalprod
-machinedata$country_code <- machinedata$`Country Code`
-machinedata$country_name <- machinedata$`Country Name.x`
-machinedata$gdp_nulls_removed <- as.numeric(na_if(df$gdp_per_capita, ".."))
+df_cleaned$aquaprod <- df$`Aquaculture production (metric tons)` 
+df_cleaned$captureprod <- df$`Capture fisheries production (metric tons)`
+df_cleaned$consumption <- df$`Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)`
+df_cleaned$totalprod <- df_cleaned$aquaprod + df_cleaned$captureprod
+df_cleaned$proportion_aquaprod <- df_cleaned$aquaprod / df_cleaned$totalprod
+df_cleaned$largescale <- df$`Industrial (large-scale commercial)`
+df_cleaned$proportion_largescale <- df_cleaned$largescale / df_cleaned$totalprod
+df_cleaned$country_code <- df$`Country Code`
+df_cleaned$country_name <- df$`Country Name.x`
+df_cleaned$gdp_nulls_removed <- as.numeric(na_if(df$gdp_per_capita, ".."))
 
-machinedata <- machinedata[ -c(1,3:9,11,13) ]
+sum(is.na(df_cleaned$aquaprod))
 
-## explore data - note to self: edit these graphs to filter!
+machinedata <- df_cleaned[ -c(2,4:10,12,14,16) ]
 
-ggplot(data=machinedata, aes(x=year_only, y=aquaprod, group=1)) +
-  geom_point()
 
-ggplot(data=machinedata, aes(x=year_only, y=shareaquaprod, group=1)) +
-  geom_point()
+## explore data - note to self: edit these graphs to filter! and may want to take these out later
 
-ggplot(data=machinedata, aes(x=year_only, y=gdp_nulls_removed, group=1)) +
+
+ggplot(data=df_cleaned, aes(x=year_only, y=proportion_aquaprod, group=1)) +
   geom_smooth()
+
+ggplot(data=df_cleaned, aes(x=year_only, y=gdp_nulls_removed, group=1)) +
+  geom_smooth()
+
+hist(machinedata$proportion_aquaprod)
+
 
 ## start machine learning
 
 library(rsample)
 library(tidymodels)
+
+set.seed(123)
 
 machinedata_split <- initial_split(machinedata)
 machinedata_train <- training(machinedata_split)
@@ -110,26 +117,29 @@ machinedata_recip <- recipe(proportion_aquaprod ~ .,
                             data = machinedata_train)
 
 machinedata_recip <- machinedata_recip %>%
-  step_dummy(all_nominal(), -all_outcomes())
-
-machinedata_recip <- machinedata_recip %>%
-  step_zv(all_predictors())
-
-machinedata_recip <- machinedata_recip %>%
-  step_center(all_predictors(), -proportion_aquaprod)
-
-machinedata_recip <- machinedata_recip %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  step_zv(all_predictors()) %>%
+  step_center(all_predictors(), -proportion_aquaprod) %>%
   step_interact(terms = ~
-                  proportion_largescale:all_predictors() +
-                co2_emissions_per_capita:all_predictors() +
-                gdp_nulls_removed:all_predictors())
+                consumption:gdp_nulls_removed) %>%
+  step_impute_knn(all_predictors()) 
 
 machinedata_recip %>% 
   prep()
 
 machinedata_train_processed <- machinedata_recip %>%
   prep() %>%
-  bake(new_data = NULL)
+  bake(new_data = machinedata_train)
+
+machinedata_train_processed
+
+
+## linear model from machine learning training data
+
+fit1 <- lm (proportion_aquaprod ~ .,
+            data= machinedata_train_processed)
+
+summary(fit1)
 
 machinedata_test_processed <- machinedata_recip %>%
   prep() %>%
@@ -137,4 +147,24 @@ machinedata_test_processed <- machinedata_recip %>%
 
 machinedata_test_processed
 
-write.csv(machinedata_test_processed,"C:\\Users\\amberwaltz\\Documents\\Machine Data Test.csv", row.names = FALSE)
+fit2 <- lm (proportion_aquaprod ~ .,
+            data= machinedata_test_processed)
+
+summary(fit2)
+
+
+## model: coefficients will be year, consumption, and GDP
+
+aquaprod_lm <- lm(proportion_aquaprod ~ 
+                  year_only + consumption + gdp_nulls_removed,
+                  data = df_cleaned)
+
+summary(aquaprod_lm)
+
+stargazer(aquaprod_lm)
+
+pairs(machinedata)
+
+write.csv(machinedata_test_processed,
+          "C:\\Users\\amberwaltz\\Documents\\Machine Data Test.csv",
+          row.names = FALSE)
