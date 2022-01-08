@@ -221,7 +221,6 @@ y <- machinedata_train_processed %>% select(proportion_aquaprod) %>%
 summary(y)
 
 lasso_out <- glmnet(X, y, alpha=1)
-##error: y is a constant - changed all NAs in y to zero
 
 lasso_out
 
@@ -232,7 +231,6 @@ colnames(X)
 cv_lasso_out <- cv.glmnet(X, y, alpha=1)
 
 coefs_lasso <- coef(cv_lasso_out, s = "lambda.1se")
-
 
 ## linear model to compare coefficients
 
@@ -247,19 +245,86 @@ summary(fit1)
 
 cbind(coefs_lasso, coefs_fit1)
 
+
 ## Clarissa - look here
 
-write.csv(comp_coef_export, "C:\\Users\\amberwaltz\\Documents\\comp coef.csv", row.names = FALSE)
+## find X and predict coefs for test data 
 
-##use this
-attributes(cv_lasso_out)
-typeof(cv_lasso_out)
+X_test <- machinedata_test_processed %>% select(!proportion_aquaprod)
 
-coefs_lasso 
+X_test_predictors <- as.matrix(X_test)
+
+X_test <- cbind(1, X_test_predictors)
+
+y_hat_lasso <- X_test %*% coefs_lasso
+
+y_test <- machinedata_test_processed %>% select(proportion_aquaprod) %>%
+  unlist %>% as.numeric()
+
+residuals_lasso <- y_test - y_hat_lasso
+
+rmse_lasso <- sqrt(mean((residuals_lasso)^2))
+
+rmse_lasso
+
+## calculate rmse with lm
+
+y_hat_lm <- X_test %*% coefs_fit1
+
+residuals_lm <- y_test - y_hat_lm
+
+residuals_lm
+
+rmse_lm <- sqrt(mean((residuals_lm)^2))
+
+rmse_lm
 
 
-##use 
-test_X %*% \beta
+# calculate rmse with lasso, lambda = min
+
+coefs_lasso_lambdamin <- coef(cv_lasso_out, s = "lambda.min")
+
+cbind(coefs_lasso_lambdamin, coefs_fit1)
+
+y_hat_lasso_lambdamin <- X_test %*% coefs_lasso_lambdamin
+
+residuals_lasso_lambdamin <- y_test - y_hat_lasso_lambdamin
+
+rmse_lasso_lambdamin <- sqrt(mean((residuals_lasso_lambdamin)^2))
+
+rmse_lasso_lambdamin
+
+## calculate rmse with lasso, alpha = .5
+
+cv_lasso_out_alpha5 <- cv.glmnet(X_test_predictors, y_test, alpha=.5)
+
+coefs_lasso_alpha5 <- coef(cv_lasso_out_alpha5, s = "lambda.min")
+
+y_hat_lasso_alpha5 <- X_test %*% coefs_lasso_alpha5
+
+residuals_lasso_alpha5 <- y_test - y_hat_lasso_alpha5
+
+rmse_lasso_alpha5 <- sqrt(mean((residuals_lasso_alpha5)^2))
+
+rmse_lasso_alpha5
+
+
+coefs_lasso_alpha5
+
+confint(fit1)
+
+
+
+
+lasso_out
+
+coef(lasso_out)
+
+colnames(X)
+
+cv_lasso_out <- cv.glmnet(X, y, alpha=1)
+
+coefs_lasso <- coef(cv_lasso_out, s = "lambda.1se")
 
 stargazer(aquaprod_lm)
 
