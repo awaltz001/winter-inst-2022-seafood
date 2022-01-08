@@ -17,16 +17,14 @@ worldbank_gdp <- readr::read_csv('https://raw.githubusercontent.com/awaltz001/wi
 worldbank_co2 <- readr::read_csv('https://raw.githubusercontent.com/awaltz001/winter-inst-2022-seafood/main/data/World%20Bank%20CO2%20Emissions%20Per%20Capita%20(mt).csv')
 
 
-write.csv(production,
-          "C:\\Users\\amberwaltz\\Documents\\production.csv",
-          row.names = FALSE)
-
 ## load packages
 
 library(tidymodels)
 library(tidyverse)
 library(stargazer)
 library(rsample)
+library(recipes)
+library(glmnet)
 
 ## join the data
 
@@ -80,8 +78,6 @@ df <- merge(x = df,
             all.x = TRUE)
 
 
-
-df_cleaned <- df[ -c(1, 4:6, 8:11, 13, 16, 18:20, 22:28, 30:31) ]
 df_cleaned <- select(df, "year_only", "Country Name.x", "Country Code",
                      "co2_emissions_per_capita", "Aquaculture production (metric tons)", "Capture fisheries production (metric tons)", "Fish, Seafood- Food supply quantity (kg/capita/yr) (FAO, 2020)",
                      "Commodity Balances - Livestock and Fish Primary Equivalent - Freshwater Fish - 2761 - Production - 5510 - tonnes",
@@ -113,14 +109,23 @@ df_cleaned$marine <- df_cleaned$`Commodity Balances - Livestock and Fish Primary
 df_cleaned$demersal <- df_cleaned$`Commodity Balances - Livestock and Fish Primary Equivalent - Demersal Fish - 2762 - Production - 5510 - tonnes`
 df_cleaned$artisanal <- df_cleaned$`Artisanal (small-scale commercial)`
 df_cleaned$discards <- df_cleaned$Discards
+df_cleaned$proportion_freshwater <- df_cleaned$freshwater/ df_cleaned$totalprod
+df_cleaned$proportion_molluscs <- df_cleaned$molluscs/ df_cleaned$totalprod
+df_cleaned$proportion_pelagic <- df_cleaned$pelagic/ df_cleaned$totalprod
+df_cleaned$proportion_crustacean <- df_cleaned$crustacean/ df_cleaned$totalprod
+df_cleaned$proportion_cephalopods <- df_cleaned$cephalopods/ df_cleaned$totalprod
+df_cleaned$proportion_marine <- df_cleaned$marine/ df_cleaned$totalprod
+df_cleaned$proportion_demersal <- df_cleaned$demersal/ df_cleaned$totalprod
+df_cleaned$proportion_artisanal <- df_cleaned$artisanal/ df_cleaned$totalprod
+df_cleaned$proportion_discards <- df_cleaned$discards/ df_cleaned$totalprod
 
 df_cleaned %>%
   filter(country_name != "China") %>%
-  ggplot(aes(proportion_aquaprod, freshwater)) + geom_point(color = country_name) 
+  ggplot(aes(proportion_aquaprod, freshwater)) + geom_point() 
 
 df_cleaned %>%
   filter(country_name != "China") %>%
-  ggplot(aes(proportion_aquaprod, freshwater)) + geom_smooth()
+  ggplot(aes(year_only, totalprod)) + geom_smooth()
 
 ggplot(data = df_cleaned) +
   geom_smooth(mapping = aes(x = year_only, y = freshwater, group = country_name))
@@ -135,8 +140,21 @@ ggplot(df_cleaned, aes(year_only)) +
 ggplot(data = df_cleaned, mapping =aes(x=year_only, y=totalprod, color = aquaprod) ) +
   geom_smooth(se=FALSE)
 
+df_cleaned %>%
+  filter(country_name != "China") %>%
+  ggplot(aes(proportion_aquaprod, freshwater)) + geom_point() 
+
+df_cleaned %>%
+  filter(country_name != "China") %>%
+  ggplot(aes(proportion_aquaprod, consumption)) + geom_point() 
+
+freshwatersp %>% filter(country_name != "China")
+
+
 machinedata <- select(df_cleaned, "year_only", "country_name", "proportion_aquaprod",
-                      "consumption", "freshwater", "co2_emissions_per_capita", "totalprod")
+                      "consumption", "proportion_freshwater", "proportion_molluscs", "proportion_pelagic", "proportion_crustacean",
+                      "proportion_cephalopods", "proportion_marine", "proportion_demersal",
+                      "co2_emissions_per_capita", "totalprod")
 
 machinedata$co2_emissions_per_capita <- as.numeric(machinedata$co2_emissions_per_capita)
 
@@ -160,13 +178,18 @@ ggplot(data=df_cleaned, aes(x=year_only, y=proportion_aquaprod, group=1)) +
 ## start machine learning
 
 
-set.seed(456)
+set.seed(789)
 
-machinedata_split <- initial_split(machinedata)
+##need to switch this for machinedata raw
+meanna <- function(x){mean(is.na(x))}
+
+apply(machinedata, 2, meanna)
+
+trim_machinedata <- na.omit(machinedata)
+
+machinedata_split  <- initial_split(trim_machinedata)
 machinedata_train <- training(machinedata_split)
 machinedata_test <- testing(machinedata_split)
-
-library(recipes)
 
 machinedata_recip <- recipe(proportion_aquaprod ~ .,
                             data = machinedata_train)
@@ -187,21 +210,56 @@ machinedata_test_processed <- machinedata_recip %>%
   prep() %>%
   bake(new_data = machinedata_test)
 
-## linear model from machine learning test
 
-fit2 <- lm (proportion_aquaprod ~ .,
-            data= machinedata_test_processed)
+X <- machinedata_train_processed %>% select(!proportion_aquaprod)
 
-summary(fit2)
+X <- as.matrix(X)
+  
+y <- machinedata_train_processed %>% select(proportion_aquaprod) %>%
+  unlist %>% as.numeric()
 
-## model: coefficients will be year, consumption, and GDP
+summary(y)
 
-aquaprod_lm <- lm(proportion_aquaprod ~ 
-                  year_only + consumption + freshwater + co2_emissions_per_capita,
-                  data = df_cleaned)
+lasso_out <- glmnet(X, y, alpha=1)
+##error: y is a constant - changed all NAs in y to zero
 
-summary(aquaprod_lm)
+lasso_out
 
+coef(lasso_out)
+
+colnames(X)
+
+cv_lasso_out <- cv.glmnet(X, y, alpha=1)
+
+coefs_lasso <- coef(cv_lasso_out, s = "lambda.1se")
+
+
+## linear model to compare coefficients
+
+fit1 <- lm (proportion_aquaprod ~ .,
+            data= machinedata_train_processed)
+
+coefs_fit1 <- coef(fit1)
+
+summary(fit1)
+
+## compare coefficients
+
+cbind(coefs_lasso, coefs_fit1)
+
+## Clarissa - look here
+
+write.csv(comp_coef_export, "C:\\Users\\amberwaltz\\Documents\\comp coef.csv", row.names = FALSE)
+
+##use this
+attributes(cv_lasso_out)
+typeof(cv_lasso_out)
+
+coefs_lasso 
+
+
+##use 
+test_X %*% \beta
 
 stargazer(aquaprod_lm)
 
@@ -210,18 +268,4 @@ df %>%
   ggplot(aes(proportion_aquaprod, freshwater)) + geom_point() 
 
 
-
-df_cleaned %>%
-  filter(country_name != "China") %>%
-  ggplot(aes(proportion_aquaprod, freshwater)) + geom_point() 
-
-df_cleaned %>%
-  filter(country_name != "China") %>%
-  ggplot(aes(proportion_aquaprod, consumption)) + geom_point() 
-
-freshwatersp %>% filter(country_name != "China")
-
-
-write.csv(machinedata_test_processed,
-          "C:\\Users\\amberwaltz\\Documents\\Machine Data Test.csv",
-          row.names = FALSE)
+## write.csv(machinedata_test_processed, "C:\\Users\\amberwaltz\\Documents\\Machine Data Test.csv", row.names = FALSE)
