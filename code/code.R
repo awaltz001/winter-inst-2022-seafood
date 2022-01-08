@@ -246,7 +246,6 @@ summary(fit1)
 cbind(coefs_lasso, coefs_fit1)
 
 
-## Clarissa - look here
 
 ## find X and predict coefs for test data 
 
@@ -312,25 +311,6 @@ rmse_lasso_alpha5
 coefs_lasso_alpha5
 
 confint(fit1)
-
-
-
-
-lasso_out
-
-coef(lasso_out)
-
-colnames(X)
-
-cv_lasso_out <- cv.glmnet(X, y, alpha=1)
-
-coefs_lasso <- coef(cv_lasso_out, s = "lambda.1se")
-
-stargazer(aquaprod_lm)
-
-df %>%
-  filter(Entity.x != "China") %>%
-  ggplot(aes(proportion_aquaprod, freshwater)) + geom_point() 
 
 
 ## write.csv(machinedata_test_processed, "C:\\Users\\amberwaltz\\Documents\\Machine Data Test.csv", row.names = FALSE)
