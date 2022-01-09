@@ -26,7 +26,7 @@ library(rsample)
 library(recipes)
 library(glmnet)
 
-## join the data
+## merge the data
 
 wb_gdp <- worldbank_gdp %>%
   pivot_longer(
@@ -119,38 +119,6 @@ df_cleaned$proportion_demersal <- df_cleaned$demersal/ df_cleaned$totalprod
 df_cleaned$proportion_artisanal <- df_cleaned$artisanal/ df_cleaned$totalprod
 df_cleaned$proportion_discards <- df_cleaned$discards/ df_cleaned$totalprod
 
-df_cleaned %>%
-  filter(country_name != "China") %>%
-  ggplot(aes(proportion_aquaprod, freshwater)) + geom_point() 
-
-df_cleaned %>%
-  filter(country_name != "China") %>%
-  ggplot(aes(year_only, totalprod)) + geom_smooth()
-
-ggplot(data = df_cleaned) +
-  geom_smooth(mapping = aes(x = year_only, y = freshwater, group = country_name))
-
-ggplot(data = df_cleaned, mapping = aes(x=year_only, y=freshwater, color=country_name)) +
-  geom_smooth(mapping = aes(linetype =country_name))
-
-ggplot(df_cleaned, aes(year_only)) +   
-  geom_line(aes(aquaprod), colour="red") +
-  geom_line(aes(captureprod), colour="green")
-
-ggplot(data = df_cleaned, mapping =aes(x=year_only, y=totalprod, color = aquaprod) ) +
-  geom_smooth(se=FALSE)
-
-df_cleaned %>%
-  filter(country_name != "China") %>%
-  ggplot(aes(proportion_aquaprod, freshwater)) + geom_point() 
-
-df_cleaned %>%
-  filter(country_name != "China") %>%
-  ggplot(aes(proportion_aquaprod, consumption)) + geom_point() 
-
-freshwatersp %>% filter(country_name != "China")
-
-
 machinedata <- select(df_cleaned, "year_only", "country_name", "proportion_aquaprod",
                       "consumption", "proportion_freshwater", "proportion_molluscs", "proportion_pelagic", "proportion_crustacean",
                       "proportion_cephalopods", "proportion_marine", "proportion_demersal",
@@ -158,32 +126,10 @@ machinedata <- select(df_cleaned, "year_only", "country_name", "proportion_aquap
 
 machinedata$co2_emissions_per_capita <- as.numeric(machinedata$co2_emissions_per_capita)
 
-## explore data - note to self: edit these graphs to filter! and may want to take these out later
-
-ggplot(data=df_cleaned, aes(x=year_only, y=proportion_aquaprod, group=1)) +
-  geom_smooth()
-
-ggplot(data=df_cleaned, aes(x=year_only, y=gdp_nulls_removed, group=1)) +
-  geom_smooth()
-
-hist(machinedata$proportion_aquaprod)
-
-p<-ggplot(data=df, aes(x=, y=len)) +
-  geom_bar(stat="identity")
-
-ggplot(data=df_cleaned, aes(x=year_only, y=proportion_aquaprod, group=1)) +
-  geom_smooth()
-
 
 ## start machine learning
 
-
 set.seed(789)
-
-##need to switch this for machinedata raw
-meanna <- function(x){mean(is.na(x))}
-
-apply(machinedata, 2, meanna)
 
 trim_machinedata <- na.omit(machinedata)
 
@@ -218,15 +164,7 @@ X <- as.matrix(X)
 y <- machinedata_train_processed %>% select(proportion_aquaprod) %>%
   unlist %>% as.numeric()
 
-summary(y)
-
 lasso_out <- glmnet(X, y, alpha=1)
-
-lasso_out
-
-coef(lasso_out)
-
-colnames(X)
 
 cv_lasso_out <- cv.glmnet(X, y, alpha=1)
 
@@ -244,8 +182,6 @@ summary(fit1)
 ## compare coefficients
 
 cbind(coefs_lasso, coefs_fit1)
-
-
 
 ## find X and predict coefs for test data 
 
@@ -268,6 +204,8 @@ rmse_lasso
 
 ## calculate rmse with lm
 
+set.seed(789)
+
 y_hat_lm <- X_test %*% coefs_fit1
 
 residuals_lm <- y_test - y_hat_lm
@@ -278,8 +216,9 @@ rmse_lm <- sqrt(mean((residuals_lm)^2))
 
 rmse_lm
 
-
 # calculate rmse with lasso, lambda = min
+
+set.seed(789)
 
 coefs_lasso_lambdamin <- coef(cv_lasso_out, s = "lambda.min")
 
@@ -294,6 +233,8 @@ rmse_lasso_lambdamin <- sqrt(mean((residuals_lasso_lambdamin)^2))
 rmse_lasso_lambdamin
 
 ## calculate rmse with lasso, alpha = .5
+
+set.seed(789)
 
 cv_lasso_out_alpha5 <- cv.glmnet(X_test_predictors, y_test, alpha=.5)
 
@@ -313,4 +254,4 @@ coefs_lasso_alpha5
 confint(fit1)
 
 
-## write.csv(machinedata_test_processed, "C:\\Users\\amberwaltz\\Documents\\Machine Data Test.csv", row.names = FALSE)
+write.csv(captured_vs_farmed, "C:\\Users\\amberwaltz\\Documents\\captured.csv", row.names = FALSE)
