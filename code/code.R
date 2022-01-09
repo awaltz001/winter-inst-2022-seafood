@@ -19,6 +19,12 @@ worldbank_co2 <- readr::read_csv('https://raw.githubusercontent.com/awaltz001/wi
 
 ## load packages
 
+
+tinytex::install_tinytex()
+install.packages("rmarkdown")
+install.packages("tinytex")
+library(tinytex)
+library(rmarkdown)
 library(tidymodels)
 library(tidyverse)
 library(stargazer)
