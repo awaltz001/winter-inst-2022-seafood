@@ -5,7 +5,7 @@ author:
   - Nicole Perez^[American University]
   - Amber Waltz^[American University]
 date: "2022-01-09"
-abstract: "This research study analyzes the increase of aquaculture production levels in different countries over a 60-year period. The research seeks to uncover which factors contribute to the increase in aquaculture production in a country over time, increasing sustainability within that country’s fishing industry. The following hypothesis is tested: as the production of freshwater fish increases in a country, the levels of aquaculture also increase over time. To answer the research question and to test our hypothesis, we examined several variables (types of fish, consumption of fish per capita, and carbon dioxide per capita) in relation to aquaculture production. We generated two Least Absolute Shrinkage and Selection Operator (LASSO) models, an elastic net model, and a linear regression model. The elastic net model was the most accurate, and it produced a value of .061 Root Mean Square Error (RMSE). Based on the results from the linear model, we reject our null hypothesis."
+abstract: "This research study analyzes the increase of aquaculture production levels in different countries over a 60-year period. The research seeks to uncover which factors contribute to the increase in aquaculture production in a country over time, increasing sustainability within that country’s fishing industry. The following hypothesis is tested: as the production of freshwater fish increases in a country, the levels of aquaculture also increase over time. To answer the research question and to test our hypothesis, we examined several variables (types of fish, consumption of fish per capita, and carbon dioxide per capita) in relation to aquaculture production. We generated two Least Absolute Shrinkage and Selection Operator (LASSO) models, an elastic net model, and a linear regression model. The elastic net model produced the smallest Root Mean Square Error (RMSE) of .065. Based on the results from the linear model, we reject our null hypothesis."
 output: 
   pdf_document:
     number_sections: true
@@ -13,7 +13,7 @@ bibliography: main.bib
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
 ```{r echo=FALSE, message=FALSE}
@@ -37,10 +37,11 @@ library(bibtex)
 library(rmarkdown)
 library(tidymodels)
 library(tidyverse)
-library(stargazer)
+library(sjPlot)
 library(rsample)
 library(recipes)
 library(glmnet)
+
 
 ## merge the data
 
@@ -139,7 +140,7 @@ df_cleaned$proportion_discards <- df_cleaned$discards/ df_cleaned$totalprod_fish
 machinedata <- select(df_cleaned, "year_only", "country_name", "proportion_aquaprod",
                       "consumption", "proportion_freshwater", "proportion_molluscs", 
                       "proportion_pelagic", "proportion_crustacean",
-                      "proportion_cephalopods", "proportion_marine", "proportion_demersal",
+                      "proportion_cephalopods", "proportion_marine",
                       "co2_emissions_per_capita", "totalprod")
 
 machinedata$co2_emissions_per_capita <- as.numeric(machinedata$co2_emissions_per_capita)
@@ -147,11 +148,12 @@ machinedata$co2_emissions_per_capita <- as.numeric(machinedata$co2_emissions_per
 
 # Introduction
 
-In this section, we present an in-depth analysis of the phenomenon that we investigated in the research project. Our research analyzes aquaculture production in countries from 1960 to 2018. We were concerned with answering the following question: which factors contribute to the increase in aquaculture production in a country over time? From this research question, the established hypothesis is as follows: as the production of freshwater fish increases in a country, the levels of aquaculture also increase over time. Our overarching question contributes to a pressing political and social topic pertaining to climate change and ecosystem health (which will be expanded upon in the following section).
+In this section, we present an in-depth analysis of the phenomenon that we investigated in the research project. Our research analyzes aquaculture production in countries from 1960 to 2018. We were concerned with answering the following question: which factors contribute to the increase in aquaculture production in a country over time? From this research question, the established hypothesis is as follows: as the production of freshwater fish increases in a country, the levels of aquaculture also increase over time. Off of this hypothesis, we expect that for every 0.1 change in the proportion of production of freshwater fish to total fish production, there is also a 0.1 change in the proportion of aquaculture production to total fish production. Our overarching question contributes to a pressing political and social topic pertaining to climate change and ecosystem health (which will be expanded upon in the following section).
 
-We compiled our data from the variables used in the datasets of two sources: the United Nations Food and Agriculture Organization (FAO) and the World Bank. The variables we extracted from these datasets include: types of fish that a country produces in a given year (measured in tons); carbon dioxide (CO2) emissions per capita, and the average amount of fish consumption per capita (measured in kilograms). This data allowed us to analyze the rates of these variables in comparison to the aquaculture production levels in every country over the span of roughly 60 years. After carrying out our research, we reject the null hypotheses. In other words, we find that the production of freshwater fish in a country is positively related to the levels of aquaculture production.
+We compiled our data from the variables used in the datasets of two sources: the United Nations Food and Agriculture Organization (FAO) and the World Bank. The variables we extracted from these datasets include: types of fish that a country produces in a given year (measured in tons); carbon dioxide (CO2) emissions per capita, and the average amount of fish consumption per capita (measured in kilograms). This data allowed us to analyze the rates of these variables in comparison to the aquaculture production levels in every country over the span of roughly 60 years. After carrying out our research, we reject the null hypothesis. In other words, we find that the production of freshwater fish in a country is positively related to the levels of aquaculture production. We determined this due to a country’s proportion of freshwater fish having the strongest positive coefficient when modelled in relation to the proportion of aquaculture production in our analysis.
 
 The remainder of this paper will provide the reader with a thorough understanding of our project. The subsequent section will explain the significance of our research topic in relation to climate change. Additionally, we discuss peer-reviewed literature to orient our original research. In the "Data and Methods" section, a complete account of the data we used in our dataset will be provided along with the source of these data. A step-by-step description of the data science methods we used to answer our research question and test our hypothesis is then presented. We explain the findings of our research and interpret how they connect to our research question and hypothesis in the "Results'' section of this paper. The content, importance, and findings of the paper are summarized in the "Discussion" section. Possible shortcomings of our research and suggestions for further research on the topic are also examined. Finally, the "References" section displays the sources that were used to support our research.
+
 
 # Context of Aquaculture Production
 
@@ -161,18 +163,18 @@ According to the Food and Agriculture Organization of the United Nations, CO2 co
 
 Not only does underwater ecosystem health have an important part to play in environmental sustainability, it can also have strong impacts on local economies. The collapse of Canada's Atlantic northwest cod fishery in 1992 was the result of decades of overfishing enabled by Canadian policy, and led to the collapse of an industry that many locals depended on for their livelihoods [@Taylor27]. We view aquaculture as an economic opportunity for local economies to maximize their fish production in a way that works with underwater habitats.
 
-We see freshwater aquaculture as a particularly strong opportunity, given the more fragile nature of freshwater ecosystems (due to their smaller size). Managing these ecosystems intentionally may allow communities to pursue rapid growth in fish production that was not possible under wild capture. China, the country that has led the world in aquaculture production, was able to do so through directed policy that focused on aquaculture, and first focused these efforts on freshwater aquaculture in particular [@Hishamunda03]. This observation led us to test our hypothesis that freshwater fish production is related to aquaculture growth in other countries, which may imply the development of fish industries outside of typical coastal areas, benefiting communities economically and environmentally.
+We see freshwater aquaculture as a particularly strong opportunity, given the more fragile nature of freshwater ecosystems (due to their smaller size). Managing these ecosystems intentionally may allow communities to pursue rapid growth in fish production that was not possible under wild capture. China, the country that has led the world in aquaculture production, was able to do so through direct policy that focused on aquaculture, and first focused these efforts on freshwater aquaculture in particular [@Hishamunda03]. This observation led us to test our hypothesis that freshwater fish production is related to aquaculture growth in other countries, which may imply the development of fish industries outside of typical coastal areas, benefiting communities economically and environmentally.
+
 
 # Data and Methods
 
 \label{section:data}
 
-```{r echo=FALSE, message=FALSE}
-## read in data
+```{r echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 
 ## start machine learning
 
-set.seed(789)
+set.seed(123)
 
 trim_machinedata <- na.omit(machinedata)
 
@@ -182,6 +184,12 @@ machinedata_test <- testing(machinedata_split)
 
 machinedata_recip <- recipe(proportion_aquaprod ~ .,
                             data = machinedata_train)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## perform machine learning
+
+options(recipe.quiet=TRUE)
 
 machinedata_recip <- machinedata_recip %>%
   step_dummy(all_nominal(), -all_outcomes()) %>%
@@ -206,6 +214,8 @@ X <- as.matrix(X)
   
 y <- machinedata_train_processed %>% select(proportion_aquaprod) %>%
   unlist %>% as.numeric()
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 
 lasso_out <- glmnet(X, y, alpha=1)
 
@@ -222,7 +232,7 @@ coefs_fit1 <- coef(fit1)
 
 ## compare coefficients
 
-cbind(coefs_lasso, coefs_fit1)
+## cbind(coefs_lasso, coefs_fit1)
 
 ## find X and predict coefs for test data 
 
@@ -241,7 +251,7 @@ residuals_lasso <- y_test - y_hat_lasso
 
 rmse_lasso <- sqrt(mean((residuals_lasso)^2))
 
-## calculate rmse with lm
+## calculate rmse with linear model
 
 set.seed(789)
 
@@ -251,7 +261,7 @@ residuals_lm <- y_test - y_hat_lm
 
 rmse_lm <- sqrt(mean((residuals_lm)^2))
 
-# calculate rmse with lasso, lambda = min
+# calculate rmse with lasso, alpha=1, lambda = min
 
 set.seed(789)
 
@@ -265,7 +275,7 @@ residuals_lasso_lambdamin <- y_test - y_hat_lasso_lambdamin
 
 rmse_lasso_lambdamin <- sqrt(mean((residuals_lasso_lambdamin)^2))
 
-## calculate rmse with lasso, alpha = .5
+## calculate rmse with elastic net, alpha = .5, lambda min
 
 set.seed(789)
 
@@ -278,12 +288,16 @@ y_hat_lasso_alpha5 <- X_test %*% coefs_lasso_alpha5
 residuals_lasso_alpha5 <- y_test - y_hat_lasso_alpha5
 
 rmse_lasso_alpha5 <- sqrt(mean((residuals_lasso_alpha5)^2))
+```
 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 df_lasso_coef <- data.frame(as.matrix(coefs_lasso_alpha5))
 
 confint_fit1 <- confint(fit1)
 
 confint_fit1_table <- head(confint_fit1,12)
+
+confint_fit1_table <- data.frame(confint_fit1_table)
 
 df_lasso_coef_table <- head(df_lasso_coef,12)
 
@@ -295,11 +309,11 @@ This dataset contains information regarding fish production and consumption by c
 
 We also decided to test the influence of a demographic variable related to a country's environmental performance to determine its correlation with the country's improvement in implementing aquaculture. To do so, we obtained information from the World Bank's World Development Indicators database on CO2 emissions per capita to observe any influence on aquaculture levels. We merged the World Bank data to the FAO data on Country Code to avoid merging complications that may come from different spellings in the Country Name.
 
-To focus our analysis on the relationship between a country's share of aquaculture production and share of freshwater fish production, we converted the variables related to production by fish type and aquaculture production into proportions by dividing them by the country's total fish production (the sum of aquaculture production and wild capture production). The total list of the thirteen variables included in our modeling follows: `/r colnames(machinedata)`
+To focus our analysis on the relationship between a country's share of aquaculture production and share of freshwater fish production, we converted the variables related to production by fish type and aquaculture production into proportions by dividing them by the country's total fish production (the sum of aquaculture production and wild capture production). The total list of the thirteen variables included in our modeling follows: `r colnames(machinedata)`.
 
-All the datasets we used contained high levels of null values due to inconsistent reporting practices and differing years when aquaculture started to be measured in each country. We omitted all rows containing null data through the `na.omit()` function, causing a drop from 12,803 to 3,955 observations. Omitting this large quantity of rows may have impacted our results, particularly our residual; given more time, we may have pursued a different approach for treatment of `NA` values that did not require us to drop entire rows.
+All the datasets we used contained high levels of null values due to inconsistent reporting practices and differing years when aquaculture started to be measured in each country. We omitted all rows containing null data through the `na.omit()` function, causing a drop from 12,803 to 3,955 observations. Omitting this large quantity of rows may have impacted our results, particularly our residual; given more time, we may have pursued a different approach for treatment of `NA` values that did not require us to drop entire rows. Additionally, we removed the demersal fish variable because the linear model was not able to draw a conclusion about its coefficient in relation to aquaculture production which impacted the rest of our analysis.
 
-We chose to implement our analysis through a machine learning model due to the high volume of variables we felt may influence an increase in aquaculture. Testing all of these variables allowed us to determine if freshwater fish production had a particularly strong influence on aquaculture production. We created three elastic net models with varying levels of $\alpha$ and $\lambda$, as well as a linear regression model. We chose to incorporate varying models to determine which had the lowest Root Mean Square Error (RMSE), indicating strongest prediction ability. Examining these elastic net models alongside a linear regression model also allowed us to understand the benefits and limitations of prioritizing the strongest predictors in our model.
+We chose to implement our analysis through a machine learning model due to the high volume of variables we felt may influence an increase in aquaculture. Testing all of these variables allowed us to determine if freshwater fish production had a relationship to aquaculture production. We created three machine learning models (including two LASSO models and one elastic net model) with varying levels of $\alpha$ and $\lambda$, as well as a linear regression model. $\alpha$ is the significance level used to determine whether the variable we are testing is statistically significant and if the results we yield are due to chance. When the $\alpha$  level is set to a smaller value (such as 0.5), there is less of a chance that these results are due to chance, meaning that we can more confidently reject the null hypothesis. $\lambda$ measures any existing association between two variables being measured. Setting $\lambda$ equal to min allows us to have the minimum average of the cross-validated error [@Hastie21],. We chose to incorporate varying models to determine which had the lowest Root Mean Square Error (RMSE). This is because RMSE is used to interpret what the absolute fit of the model is in comparison to the data. RMSE measures how accurately the model (in this case the elastic net model and the linear net model) are able to predict the data that has been observed. Examining these machine learning models alongside a linear regression model also allowed us to understand the benefits and limitations of prioritizing the strongest predictors in our model.
 
 To create our machine learning models, we used the recipes package to split our data into training and testing populations. We then produced a recipe from our training data by setting aquaculture as the outcome and all other variables in the machinedata data frame as predictors. We ran `prep()` and then `bake()` on the training data, set our $X$ value as the predictors from our processed training data (machinedata_train_processed), and set our $y$ value as the outcome (proportion of aquaculture production, proportion_aquaprod). We then used the `glmnet()` function to find the LASSO, set the $\lambda$ as one standard error, and generated our model's coefficients using the `coef()` function. We used $\beta$ \* $X$ to predict $\hat{y}$ for the test data, and found the residuals using $y$ - $\hat{y}$. Finally, we found the RMSE using the calculation:
 
@@ -307,49 +321,62 @@ $$RMSE = \sqrt{\frac{1}{n}\Sigma_{i=1}^{n}{\Big(\frac{d_i -f_i}{\sigma_i}\Big)^2
 
 We repeated this process on the same predictors and outcomes for a simple linear regression, a LASSO model with minimum $\lambda$ (where s = "lambda.min"), and an elastic net model with minimum $\lambda$ and $\alpha$ of 0.5. We then compared the RMSE of each model to determine that the final elastic net model that we tested had the strongest prediction performance. We used this model to find the coefficients for each of our $X$ variables and evaluated the strength and statistical significance of each coefficient. The following sections will describe our results in further detail.
 
+
 # Results
 
-After analyzing the effect of our variables on the proportion of aquaculture production, we conclude that variables related to fish type have the closest correlation to aquaculture production. This is based on the most predictive of the elastic net models we produced, the model with minimum $\lambda$ and $\alpha$ of 0.5 that had the lowest RMSE.
+After analyzing the effect of our variables on the proportion of aquaculture production, we conclude that variables related to fish type have the closest correlation to aquaculture production. This is based on the model with the lowest residual of the models we produced, the model with minimum $\lambda$ and $\alpha$ of 0.5 that had the lowest RMSE of .065.
 
-Below we show the variables and their coefficients (produced in the elastic net model with $\lambda$ = min; $\alpha$ = 0.5), and the confidence intervals (generated from the linear model). Both tables use `stargazer()`.
+Below we show the variables and their coefficients (produced in the elastic net model with $\lambda$ = min; $\alpha$ = 0.5), and the confidence intervals (generated from the linear model). Both tables use `xtable()`.
+
 
 ```{r echo=FALSE, message=FALSE, results='asis'}
-(confint_fit1_table)
-(df_lasso_coef_table)
+               
+df_lasso_coef_table_print <- xtable::xtable((df_lasso_coef_table),
+               digits = 2,
+               caption = "Coefficients from Elastic Net Model")
+print(df_lasso_coef_table_print, comment = FALSE)
+
+confint_fit1_table_print <- xtable::xtable((confint_fit1_table),
+               digits = 4,
+               caption = "Confidence Intervals from Linear Model")
+print(confint_fit1_table_print, comment = FALSE)
 ```
 
-The coefficient of each variable tells us how much the levels of aquaculture production are expected to increase (if the coefficient is positive) or decrease (if the coefficient is negative) if each variable were to increase by 1. This table shows that variables pertaining to the types of fish have the closest connection to aquaculture production levels. As depicted, the only type of fish variable that has a positive coefficient is the freshwater fish. This means that as the production of freshwater fish increases in a country, so does the production of aquaculture. In other words, countries that have a growing proportion of their freshwater fishing industry also observe heightened aquaculture levels. Whereas countries that utilize other types of fishing (pelagic, crustacean, cephalopods, and demersal) are less likely to observe aquaculture production.
+The coefficient of each variable tells us how much the levels of aquaculture production are expected to increase (if the coefficient is positive) or decrease (if the coefficient is negative) if each variable were to increase by 1. This table shows that variables pertaining to the types of fish have the closest connection to aquaculture production levels. Proportion_freshwater and proportion_molluscs both have a positive association with proportion_aquaprod, which we were not expecting. This means that as the production of freshwater fish increases in a country (and molluscs), so does the production of aquaculture. In other words, countries that have a growing proportion of their freshwater (or mollusc) fishing industry also observe heightened aquaculture levels. Whereas countries that utilize other types of fishing (pelagic, crustacean, cephalopods) are less likely to observe aquaculture production.
 
-The confidence intervals in the model were produced by the linear model which were then organized next to the coefficients of the variables produced by the elastic net model (with $\lambda$ = min; $\alpha$ = 0.5). As shown, the coefficients of the variables often fall outside of the range of the lower (2.5%) and upper (97.5%) confidence intervals. The elastic net model's RMSE `r rmse_lasso_alpha5` was smaller than the linear model's RMSE `r rmse_lm`, which tells us that the elastic net model is more accurate when predicting results. Thus, the confidence intervals generated by the linear model are not as accurate or refined as the elastic net model's would be, which is why some of the variables' coefficients are not within the 95% confidence interval. This observation indicates that considering all of the variables as a whole (as in the elastic net model) has an important role in predicting levels of aquaculture production in this model.
+The confidence intervals in the model were produced by the linear model which were then organized next to the coefficients of the variables produced by the elastic net model (with $\lambda$ = min; $\alpha$ = 0.5). As shown, the coefficients of the variables often fall outside of the range of the lower (2.5%) and upper (97.5%) confidence intervals. The elastic net model's RMSE `r rmse_lasso_alpha5` was smaller than the linear model's RMSE `r rmse_lm`, which tells us that the elastic net model has less residual on our test data. Thus, the estimate from the elastic net model is not a value that is consistent with what the linear model determined, indicating that the elastic net model would produce a result outside of the confidence interval of the linear model.
 
 There were also country names that returned coefficients in our model. We attribute this with national policy that has impacted aquaculture production levels, such as in the case of China.
 
-Below we portray the summary statistics of the linear model. The table uses `stargazer()`.
+Below we present the summary statistics of the linear model. The table uses `tab_model()`.
 
-```{r echo=FALSE, message=FALSE, results='asis'}
-(summary(fit1))
- 
-```
 
-From this linear model, a number of results are derived. The "estimate" is the coefficient or number associated with the variable. Here we see that the proportion of freshwater fish production and the proportion of molluscs production are both positively associated with the proportion of aquaculture production, as opposed to in the elastic net model (with $\alpha$ = 0.5) in which only the proportion of freshwater fish production was determined to have a positive correlation with the proportion of aquaculture production. The standard error of the linear model measures how precise the coefficient value was estimated to be by the linear model. This approximate value is expected to be more precise when the standard error is smaller @Minitab18. Generally, we want to ensure that the coefficient is not zero, which is indicated by a large coefficient value in relation to the standard error value. Similarly, it is desirable for the t-value to be rather large so that the coefficient is less likely to be zero. When looking at the proportion of freshwater fish production, we see that the coefficient (2.476e-01) is larger than its standard error (2.109e-02). Therefore, it is likely that the proportion of the freshwater fish production coefficient is not zero. This is further likely to be the case when considering how large the t-value for proportion of freshwater fish production is (11.743), especially in comparison to the t-values for the other fish type variables.
 
-One of the linear model results is the p-value, which informs us as to the statistical significance of the relationship observed between the variables and the aquaculture production. A p-value of less than 0.05 is considered to be statistically significant. As seen from the "Pr(>\|t)" column, all of the variables we tested are statistically significant. Three stars mean that the p-value is between 0 and 0.001 (as observed in every variable except fish consumption per capita). Two stars indicate that the p-value is between 0.001 and 0.01 (as observed in fish consumption per capita). The more stars that a variable has, the more statistically significant the value is. Thus, all the variables in the linear model are statistically significant, meaning that the results were unlikely to occur by chance. This means that we are, in fact, able to reject the null hypothesis; proving that as the production of freshwater fish increases in a country, the aquaculture production levels in the country also increase.
+![](lm_image_1.png)
 
-When looking at the elastic net model with $\alpha$ = 0.5 and $\lambda$ = min, the proportion of freshwater fish production was observed to be the variable that had the strongest positive relationship to aquaculture production. Freshwater fish were, in fact, the only type of fish variable that produced a positive coefficient. Due to this - and because we were able to reject the null hypothesis - we have created some visuals of the relationship between proportion of freshwater production and proportion of aquaculture production. Below we present a scatterplot of the relationship between freshwater fish as a proportion of the country's total fish production and the level of aquaculture production as a proportion of the country's total fish production.
 
-```{r echo=FALSE, message=FALSE, results='asis'}
+From this linear model, a number of results are derived. The "estimate" is the coefficient or number associated with the variable. Here we see that again the proportion of freshwater fish production and the proportion of molluscs production are both positively associated with the proportion of aquaculture production. When looking at the proportion_freshwater, we see that the coefficient is 0.33 and does fall within the confidence interval (0.28 and 0.37). The proportion_molluscs coefficient is 0.27 and also falls within its confidence interval (0.21 and 0.37).
+
+One of the linear model results is the p-value, which informs us as to the statistical significance of the relationship observed between the variables and the aquaculture production. A p-value of less than 0.05 is considered to be statistically significant. As seen from the "p" column, all of the variables we tested are statistically significant since they are all less than 0.001. Thus, all the variables in the linear model are statistically significant, meaning that the results were unlikely to occur by chance. This means that we are, in fact, able to reject the null hypothesis; proving that as the production of freshwater fish increases in a country, the aquaculture production levels in the country also increase.
+
+When looking at the elastic net model with $\alpha$ = 0.5 and $\lambda$ = min, the proportion of freshwater fish production was observed to be the variable that had the strongest positive relationship to aquaculture production. Freshwater fish were, in fact, one out of the two types of fish variables that produced a positive coefficient. Due to this - and because we were able to reject the null hypothesis - we have created some visuals of the relationship between proportion of freshwater production and proportion of aquaculture production. Below we present a scatterplot of the relationship between freshwater fish as a proportion of the country's total fish production and the level of aquaculture production as a proportion of the country's total fish production.
+
+
+```{r echo=FALSE, message=FALSE, error=FALSE, results='asis'}
 df_cleaned %>%
-  ggplot(aes(proportion_aquaprod, proportion_freshwater)) + geom_point() 
+  ggplot(aes(proportion_aquaprod, proportion_freshwater)) + geom_point() + geom_smooth()
 ```
 
-A positive relationship between the two variables can be observed in the scatterplot.
+The scatterplot demonstrates the relationship between the annual production of freshwater fish (in tons) as a proportion of total fish production and the level of aquaculture production as a proportion of total fish production. We used ggplot() to create the graph. A positive relationship between the two variables can be observed in this graph.
 
 # Discussion
 
-Overall, the variables we tested provided us with a better understanding of how fish production by type, consumption of fish per capita, and CO2 emissions per capita influences a country's aquaculture production levels. We found all variables to be statistically significant based on the linear model, and found that our elastic net model was 93.9% accurate in predicting a country's proportion of aquaculture. While we cannot state for sure in what local contexts these aquaculture projects are found, the stronger growth for freshwater production over all other fish types in association with aquaculture may indicate that aquaculture has increased opportunities for fish production outside of coastal areas. Additional qualitative and quantitative research would be needed to confirm in what contexts aquaculture practices are increasing and what local impacts they have.
+Overall, the variables we tested provided us with a better understanding of how fish production by type, consumption of fish per capita, and CO2 emissions per capita influences a country's aquaculture production levels. We found all variables to be statistically significant based on the linear model. While we cannot state for sure in what local contexts these aquaculture projects are found, the stronger growth for freshwater production over all other fish types in association with aquaculture may indicate that aquaculture has increased opportunities for fish production outside of coastal areas. Additional qualitative and quantitative research would be needed to confirm in what contexts aquaculture practices are increasing and what local impacts they have.
 
 Expanding on limitations we faced in our project, one of the crucial limitations to our data would be the amount of NAs scattered across all years of our data that significantly limited our number of observations and may have skewed our results. Additionally, we had hoped to include GDP per capita as a variable in our analysis, but we were unable to find data that was in adjusted US Dollars for the timespan of our analysis. We would recommend that future researchers examine the relationship between this variable and aquaculture production, as well as other economic development indicators, to better understand the economic contexts in which aquaculture is currently practiced.
 
 Another interesting observation that could be expanded upon in future research is examining how CO2 emissions per capita relates to aquaculture production levels. Though we tested this variable and it was statistically significant in the linear model, the value of CO2 emissions per capita in the elastic net model with alpha = 0.5 was small. This value suggests that there is little connection between the aquaculture production levels in a country and the amount of carbon dioxide that is emitted per capita. Potentially, this can be interpreted as the countries that are pursuing aquaculture production are not necessarily the countries that are pursuing strong sustainability measures or policies, which may imply that the growth of aquaculture is motivated more by economic growth than environmental benefits. To confidently make this statement, more data is needed to test this hypothesis.
 
 # References
+
+
